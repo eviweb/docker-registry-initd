@@ -1,0 +1,128 @@
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start daemon at boot time
+# Description:       Enable service provided by daemon.
+### END INIT INFO
+
+# inspired by Felix H. Dahlke's `init-script-template`
+# @see https://github.com/fhd/init-script-template.git
+
+user="docker"
+dir="/home/${user}/distribution/contrib/compose"
+config="${dir}/docker-compose.yml"
+cmd="docker-compose -f ${config}"
+start_cmd="${cmd} start"
+stop_cmd="${cmd} stop"
+state_cmd="${cmd} ps"
+
+name=`basename $0`
+stdout_log="/var/log/${name}.log"
+stderr_log="/var/log/${name}.err"
+
+is_running() {
+    parse_state "$(${state_cmd})" | grep -Poe 'Up' &> /dev/null
+}
+
+# parse the command state (table format)
+# it normalizes the result as follows:
+# SERVICE_1:SERVICE_STATE_1#SERVICE_2:SERVICE_STATE_2
+parse_state() {
+    local result=""
+    while read line
+    do
+        if ! [[ $line =~ ^Name.*$ ]] && ! [[ $line =~ ^-+$ ]]
+        then
+            normalized="$(echo "$line" | sed 's/  \+/#/g' | sed 's/#\+/#/g')"
+            name="$(echo ${normalized} | cut -d "#" -f 1)"
+            state="$(echo ${normalized} | cut -d "#" -f 3)"
+            result="${result}#${name}:$state"
+        fi
+    done <<< "$1"
+
+    echo "${result/\#/}"
+}
+
+# print current service state
+print_state() {
+    local state="$(parse_state "$(${state_cmd})")"
+    local services="$(echo $state | tr "#" "\n")"
+    for service in "${services}"
+    do
+        echo "${service}"
+    done
+}
+
+
+case "$1" in
+    start)
+        if is_running; then
+            echo "Already started"
+        else
+            echo "Starting ${name}..."
+            cd "${dir}"
+            sudo -u "$user" $start_cmd >> "${stdout_log}" 2>> "${stderr_log}"
+            if ! is_running; then
+                echo "Unable to start, see ${stdout_log} and ${stderr_log}"
+                exit 1
+            else
+                echo "Started"
+            fi
+        fi
+    ;;
+    stop)
+        if is_running; then
+            echo "Stopping ${name}..."
+            cd "${dir}"
+            sudo -u "$user" $stop_cmd >> "${stdout_log}" 2>> "${stderr_log}"
+            for i in {1..10}
+            do
+                if ! is_running; then
+                    break
+                fi
+
+                echo -n "."
+                sleep 1
+            done
+
+            if is_running; then
+                echo "Not stopped; may still be shutting down or shutdown may have failed"
+                exit 1
+            else
+                echo "Stopped"
+            fi
+        else
+            echo "Not running"
+        fi
+    ;;
+    restart)
+        $0 stop
+        if is_running; then
+            echo "Unable to stop, will not attempt to start"
+            exit 1
+        fi
+        $0 start
+    ;;
+    status)
+        if is_running; then
+            echo "Started"
+            echo "Detail of running services"
+            print_state
+        else
+            echo "Not running"
+            echo "All services are stopped"
+            print_state
+            exit 1
+        fi
+    ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+    ;;
+esac
+
+exit 0
