@@ -13,7 +13,7 @@
 # @see https://github.com/fhd/init-script-template.git
 
 user="docker"
-dir="/home/${user}/distribution/contrib/compose"
+dir="/home/${user}/config"
 config="${dir}/docker-compose.yml"
 cmd="docker-compose -f ${config}"
 start_cmd="${cmd} start"
