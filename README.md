@@ -3,7 +3,7 @@ Docker Registry Startup Script
 Script to start a docker registry at boot time and to stop it during shutdown.
 
 > This assumes :
-> * the docker distribution package is installed under the home directory of a docker user (ie: `/home/docker/distribution`)
+> * the docker compose config file is installed under the home directory of a docker user: `/home/docker/config/docker-compose.yml`
 > * the docker compose tool is installed
 
 How to
@@ -32,5 +32,4 @@ Run: `sudo service docker-registry status`
 Credits
 -------
 * The start-up script is inspired by [**Felix H. Dahlke's** init-script-template](https://github.com/fhd/init-script-template.git)
-* Docker distribution can be found at: [https://github.com/docker/distribution]()
 * Docker compose can be found at: [https://github.com/docker/compose]()
