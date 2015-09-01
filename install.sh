@@ -33,9 +33,9 @@ install() {
 }
 
 # uninstall the start-up script
-uninstall() {
-    unlink ${INITD}/docker-registry
+uninstall() {    
     update-rc.d docker-registry remove
+    unlink ${INITD}/docker-registry
 }
 
 OPTIONS=":hsu"
